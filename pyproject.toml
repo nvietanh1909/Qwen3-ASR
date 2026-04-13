@@ -24,6 +24,7 @@ dependencies = [
   "nagisa==0.2.11",
   "soynlp==0.0.493",
   "accelerate==1.12.0",
+  "fastapi",
   "qwen-omni-utils",
   "librosa",
   "soundfile",
@@ -31,6 +32,7 @@ dependencies = [
   "gradio",
   "flask",
   "pytz",
+  "uvicorn",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +48,7 @@ Repository = "https://github.com/Qwen/Qwen3-ASR"
 qwen-asr-demo = "qwen_asr.cli.demo:main"
 qwen-asr-demo-streaming = "qwen_asr.cli.demo_streaming:main"
 qwen-asr-serve = "qwen_asr.cli.serve:main"
+qwen-asr-streaming-service = "qwen_asr.cli.streaming_service:main"
 
 [tool.setuptools]
 packages = { find = { where = ["."] , include = ["qwen_asr*"] } }

@@ -444,6 +444,29 @@ qwen-asr-demo-streaming \
 
 Then open `http://<your-ip>:8000`, or access it via port forwarding in tools like VS Code.
 
+### Streaming API Service
+
+If you want a cleaner service-style deployment instead of the minimal Flask demo, use the dedicated FastAPI service:
+
+```bash
+qwen-asr-streaming-service \
+  --asr-model-path Qwen/Qwen3-ASR-1.7B \
+  --host 0.0.0.0 \
+  --port 8001 \
+  --gpu-memory-utilization 0.8 \
+  --session-ttl-sec 600
+```
+
+The API exposes:
+
+- `POST /v1/stream/sessions` to create a session
+- `POST /v1/stream/sessions/{session_id}/audio` to push one raw float32 PCM chunk
+- `POST /v1/stream/sessions/{session_id}/finish` to flush the tail audio
+- `WS /v1/stream/sessions/{session_id}/ws` for bidirectional streaming
+- `GET /healthz` for liveness probes
+
+The service expects mono 16 kHz PCM encoded as raw `float32` bytes. This keeps the server thin and avoids extra resampling or audio decoding logic.
+
 ## Deployment with vLLM
 
 vLLM officially provides day-0 model support for Qwen3-ASR for efficient inference. 
