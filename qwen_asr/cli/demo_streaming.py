@@ -29,11 +29,10 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Dict, Optional
-
+import torch
 import numpy as np
 from flask import Flask, Response, jsonify, request
 from qwen_asr import Qwen3ASRModel
-
 
 @dataclass
 class Session:
@@ -51,6 +50,27 @@ global CHUNK_SIZE_SEC
 
 SESSIONS: Dict[str, Session] = {}
 SESSION_TTL_SEC = 10 * 60
+
+
+def _effective_gpu_memory_utilization(requested: float) -> float:
+  requested = float(requested)
+  try:
+    if torch.cuda.is_available():
+      free_bytes, total_bytes = torch.cuda.mem_get_info()
+      free_ratio = free_bytes / total_bytes
+      safe_ratio = max(0.10, free_ratio - 0.05)
+      effective = min(requested, safe_ratio)
+      if effective < requested:
+        print(
+          "Reducing gpu_memory_utilization from "
+          f"{requested:.2f} to {effective:.2f} because only "
+          f"{free_ratio:.2f} of GPU memory is free at startup."
+        )
+      return effective
+  except Exception:
+    pass
+
+  return requested
 
 
 def _gc_sessions():
@@ -494,9 +514,11 @@ def main():
     UNFIXED_TOKEN_NUM = args.unfixed_token_num
     CHUNK_SIZE_SEC = args.chunk_size_sec
 
+    effective_gpu_memory_utilization = _effective_gpu_memory_utilization(args.gpu_memory_utilization)
+
     asr = Qwen3ASRModel.LLM(
         model=args.asr_model_path,
-        gpu_memory_utilization=args.gpu_memory_utilization,
+      gpu_memory_utilization=effective_gpu_memory_utilization,
         max_new_tokens=32,
     )
     print("Model loaded.")

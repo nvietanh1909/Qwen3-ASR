@@ -10,6 +10,7 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
+import torch
 
 import numpy as np
 import uvicorn
@@ -24,6 +25,27 @@ from qwen_asr.inference.utils import normalize_language_name, validate_language
 
 
 DEFAULT_MODEL_PATH = "Qwen/Qwen3-ASR-1.7B"
+
+
+def _effective_gpu_memory_utilization(requested: float) -> float:
+    requested = float(requested)
+    try:
+        if torch.cuda.is_available():
+            free_bytes, total_bytes = torch.cuda.mem_get_info()
+            free_ratio = free_bytes / total_bytes
+            safe_ratio = max(0.10, free_ratio - 0.05)
+            effective = min(requested, safe_ratio)
+            if effective < requested:
+                print(
+                    "Reducing gpu_memory_utilization from "
+                    f"{requested:.2f} to {effective:.2f} because only "
+                    f"{free_ratio:.2f} of GPU memory is free at startup."
+                )
+            return effective
+    except Exception:
+        pass
+
+    return requested
 
 
 class SessionCreateRequest(BaseModel):
@@ -155,9 +177,10 @@ class StreamingService:
 
     def load_model(self) -> None:
         if self.asr is None:
+            effective_gpu_memory_utilization = _effective_gpu_memory_utilization(self.gpu_memory_utilization)
             self.asr = Qwen3ASRModel.LLM(
                 model=self.model_path,
-                gpu_memory_utilization=self.gpu_memory_utilization,
+                gpu_memory_utilization=effective_gpu_memory_utilization,
                 max_new_tokens=self.max_new_tokens,
             )
 
